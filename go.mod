@@ -1,3 +1,3 @@
-module github.com/Jgrtowy/ServerSetup
+module github.com/jgrtowy/yamst
 
 go 1.20

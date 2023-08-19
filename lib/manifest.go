@@ -3,14 +3,14 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 )
 
 func ExistsCheck() bool {
-	_, err := os.Stat("./cache/manifest.json")
-	content, err := readFileContents("./cache/manifest.json")
+	_, err := os.Stat(GetCacheDirectory())
+	content, err := readFileContents(GetCacheDirectory() + "/manifest.json")
 	if err == nil {
 		var releaseInfo ReleaseInfo
 		err = json.Unmarshal(content, &releaseInfo)
@@ -34,7 +34,7 @@ func readFileContents(filePath string) ([]byte, error) {
 	}
 	defer file.Close()
 
-	contentBytes, err := ioutil.ReadAll(file)
+	contentBytes, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
@@ -42,34 +42,40 @@ func readFileContents(filePath string) ([]byte, error) {
 	return contentBytes, nil
 }
 
-func getManifest() ([]byte, error) {
-	response, err := http.Get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return nil, err
-	}
-	defer response.Body.Close()
+func GetManifest(from string) ([]byte, error) {
+	if from == "http" {
+		response, err := http.Get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
+		if err != nil {
+			fmt.Println("Error:", err)
+			return nil, err
+		}
+		defer response.Body.Close()
 
-	// Read the response body
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Println("Error reading response:", err)
-		return nil, err
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			fmt.Println("Error reading response:", err)
+			return nil, err
+		}
+		return body, nil
+	} else if from == "toolCache" {
+		body, err := readFileContents(GetCacheDirectory() + "/manifest.json")
+		if err != nil {
+			fmt.Println("Error reading manifest:", err)
+			return nil, err
+		}
+		return body, nil
 	}
-
-	return body, nil
+	return nil, nil
 }
 func UpdateManifest() {
 	fmt.Println("Updating manifest...")
-	response, err := getManifest()
+	response, err := GetManifest("http")
 	var releaseInfo ReleaseInfo
 	err = json.Unmarshal(response, &releaseInfo)
 	if err != nil {
 		fmt.Println("Error decoding JSON:", err)
 		return
 	}
-	os.Mkdir("cache", 0755)
-	os.WriteFile("./cache/manifest.json", response, 0644)
-	// create directory
+	os.WriteFile(GetCacheDirectory()+"/manifest.json", response, 0644)
 	fmt.Println("Done! Latest release:", releaseInfo.Latest.Release)
 }

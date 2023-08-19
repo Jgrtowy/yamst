@@ -1,1 +1,5 @@
-cache
+*
+!/*.go
+!/lib
+!LICENSE
+!README.md
