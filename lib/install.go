@@ -37,7 +37,7 @@ func download(version string, serverType string) error {
 	switch serverType {
 	case "vanilla":
 		var PackageInfo PackageInfo
-		response, err := http.Get(versionInfo.Url)
+		response, err = http.Get(versionInfo.Url)
 
 		if err != nil {
 			return fmt.Errorf("Error downloading package info: %s \n", err)

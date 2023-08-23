@@ -50,3 +50,10 @@ It's pretty useless right now, but I'm working on it to make it as good as it ca
 4. Add the folder to your PATH
 
 5. Open a command prompt and run `yamst -h` to verify the installation and see the available commands
+
+### Usage
+
+1. Create a folder for your server
+2. Open a command prompt in the folder
+
+3. Run `yamst -i` to install the latest version of
