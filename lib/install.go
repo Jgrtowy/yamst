@@ -1,7 +1,6 @@
 package lib
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,9 +9,9 @@ import (
 	"path/filepath"
 )
 
-func download(version string) error {
-	fmt.Printf("Selected version: %s \n", version)
-	manifest, err := GetManifest("toolCache")
+func download(version string, serverType string) error {
+	fmt.Printf("Selected version: %s %s \n", version, serverType)
+	manifest, err := GetManifest("toolCache", "vanilla", version)
 	if err != nil {
 		return fmt.Errorf("Error getting manifest: %s \n", err)
 	}
@@ -33,28 +32,52 @@ func download(version string) error {
 	if versionInfo.Id == "" {
 		return fmt.Errorf("Version not found \n")
 	}
+	fmt.Printf("Downloading server\n")
+	var response *http.Response
+	switch serverType {
+	case "vanilla":
+		var PackageInfo PackageInfo
+		response, err := http.Get(versionInfo.Url)
 
-	fmt.Printf("Downloading server on version: %s \n", versionInfo.Id)
-	var PackageInfo PackageInfo
-	response, err := http.Get(versionInfo.Url)
+		if err != nil {
+			return fmt.Errorf("Error downloading package info: %s \n", err)
+		}
 
-	if err != nil {
-		return fmt.Errorf("Error downloading package info: %s \n", err)
+		err = json.NewDecoder(response.Body).Decode(&PackageInfo)
+		if err != nil {
+			return fmt.Errorf("Error decoding package info: %s \n", err)
+		}
+
+		response, err = http.Get(PackageInfo.Downloads.Server.Url)
+		defer response.Body.Close()
+		if err != nil {
+			return fmt.Errorf("Error downloading server: %s \n", err)
+		}
+		break
+	case "paper":
+		latestBuild, err := GetLatestPaperBuild(version)
+		if err != nil {
+			return fmt.Errorf("Error getting latest build: %s \n", err)
+		}
+		url := fmt.Sprintf("https://papermc.io/api/v2/projects/paper/versions/%s/builds/%d", version, latestBuild)
+		response, err = http.Get(url)
+		var paperBuildInfo PaperBuildInfo
+		err = json.NewDecoder(response.Body).Decode(&paperBuildInfo)
+		if err != nil {
+			return fmt.Errorf("Error decoding package info: %s \n", err)
+		}
+		url = url + "/downloads/" + paperBuildInfo.Downloads.Application.Name
+		fmt.Println(url)
+		response, err = http.Get(url)
+		if err != nil {
+			return fmt.Errorf("Error downloading server: %s \n", err)
+		}
+		defer response.Body.Close()
+
+		break
 	}
 
-	err = json.NewDecoder(response.Body).Decode(&PackageInfo)
-	if err != nil {
-		return fmt.Errorf("Error decoding package info: %s \n", err)
-	}
-
-	response, err = http.Get(PackageInfo.Downloads.Server.Url)
-	defer response.Body.Close()
-
-	if err != nil {
-		return fmt.Errorf("Error downloading server: %s \n", err)
-	}
-
-	abs, err := filepath.Abs(GetCacheDirectory() + "/" + version + ".jar")
+	abs, err := filepath.Abs(GetCacheDirectory() + "/" + version + "_" + serverType + ".jar")
 	file, err := os.Create(abs)
 	if err != nil {
 		return fmt.Errorf("Error creating server file: %s \n", err)
@@ -69,8 +92,8 @@ func download(version string) error {
 	return nil
 }
 
-func JarExists(version string) bool {
-	abs, err := filepath.Abs(GetCacheDirectory() + "/" + version + ".jar")
+func JarExists(version string, serverType string) bool {
+	abs, err := filepath.Abs(GetCacheDirectory() + "/" + version + "_" + serverType + ".jar")
 	if err != nil {
 		return false
 	}
@@ -81,14 +104,18 @@ func JarExists(version string) bool {
 	return true
 }
 
-func InstallServer(version string, workingDir string) {
-	// check if the version is downloaded already in cache
-	if !JarExists(version) {
+func InstallServer(version string, workingDir string, serverType string) {
+	if !JarExists(version, serverType) {
 		fmt.Println("Server not found in cache. Downloading...")
 		if version == "" {
-			version = "latest"
+			var err error
+			version, err = GetLatest()
+			if err != nil {
+				fmt.Printf("Error getting latest version: %s \n", err)
+				return
+			}
 		}
-		err := download(version)
+		err := download(version, serverType)
 		if err != nil {
 			fmt.Printf("Error downloading server: %s \n", err)
 			return
@@ -96,7 +123,7 @@ func InstallServer(version string, workingDir string) {
 	} else {
 		fmt.Println("Server found in cache. Copying...")
 	}
-	abs, err := filepath.Abs(GetCacheDirectory() + "/" + version + ".jar")
+	abs, err := filepath.Abs(GetCacheDirectory() + "/" + version + "_" + serverType + ".jar")
 	err = copyFile(fmt.Sprintf(abs), fmt.Sprintf("%s/server.jar", workingDir))
 
 	if err != nil {
@@ -126,65 +153,4 @@ func copyFile(src, dst string) error {
 	}
 
 	return nil
-}
-
-func ApplyDefaultSettings(workingDir string) error {
-	fmt.Println("By using -d option you agree to the Minecraft EULA: https://account.mojang.com/documents/minecraft_eula")
-	// wait for y or n
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Do you agree? (y/n): ")
-	char, _, err := reader.ReadRune()
-	if err != nil {
-		return fmt.Errorf("Error reading input: %s \n", err)
-	}
-	switch char {
-	case 'y':
-		fmt.Println("Applying default settings...")
-		abs, err := filepath.Abs(fmt.Sprintf("%s/eula.txt", workingDir))
-		if err != nil {
-			return fmt.Errorf("Error getting absolute path: %s \n", err)
-		}
-		_, err = os.Create(abs)
-		if err != nil {
-			return fmt.Errorf("Error creating eula.txt: %s \n", err)
-		}
-		file, err := os.OpenFile(abs, os.O_RDWR, 0644)
-		if err != nil {
-			return fmt.Errorf("Error opening eula.txt: %s \n", err)
-		}
-		_, err = file.WriteString("eula=true")
-		if err != nil {
-			return fmt.Errorf("Error writing to eula.txt: %s \n", err)
-		}
-		defer file.Close()
-
-		_, err = os.Stat(fmt.Sprintf("%s/start.sh", workingDir))
-		_, err = os.Stat(fmt.Sprintf("%s/start.bat", workingDir))
-		if err != nil {
-			_, err = os.Create(fmt.Sprintf("%s/start.sh", workingDir))
-			_, err = os.Create(fmt.Sprintf("%s/start.bat", workingDir))
-
-			if err != nil {
-				return fmt.Errorf("Error creating start scripts: %s \n", err)
-			}
-		}
-
-		err = os.WriteFile(fmt.Sprintf("%s/start.sh", workingDir), []byte("java -Xms1024M -Xmx1024M -jar server.jar nogui"), 0644)
-		err = os.WriteFile(fmt.Sprintf("%s/start.bat", workingDir), []byte("java -Xms1024M -Xmx1024M -jar server.jar nogui"), 0644)
-
-		if err != nil {
-
-		}
-		fmt.Println("Successfully applied default settings")
-
-		return nil
-
-	case 'n':
-		fmt.Println("You must agree to the EULA to use the -d option")
-		return nil
-
-	default:
-		fmt.Println("Invalid input")
-		return nil
-	}
 }

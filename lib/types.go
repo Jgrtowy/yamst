@@ -23,3 +23,15 @@ type PackageInfo struct {
 		}
 	}
 }
+
+type PaperBuilds struct {
+	Builds []int32 `json:"builds"`
+}
+
+type PaperBuildInfo struct {
+	Downloads struct {
+		Application struct {
+			Name string `json:"name"`
+		} `json:"application"`
+	} `json:"downloads"`
+}

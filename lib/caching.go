@@ -21,12 +21,12 @@ func GetCacheDirectory() string {
 		}
 	}
 
-	if _, err := os.Stat(filepath.Join(cacheDir, "ServerSetup")); os.IsNotExist(err) {
-		err = os.Mkdir(filepath.Join(cacheDir, "ServerSetup"), 0755)
+	if _, err := os.Stat(filepath.Join(cacheDir, "YAMST")); os.IsNotExist(err) {
+		err = os.Mkdir(filepath.Join(cacheDir, "YAMST"), 0755)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	return filepath.Join(cacheDir, "ServerSetup")
+	return filepath.Join(cacheDir, "YAMST")
 }

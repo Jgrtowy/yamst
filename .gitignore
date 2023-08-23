@@ -1,5 +1,5 @@
 *
-!/*.go
-!/lib
+!*.go
+!lib
 !LICENSE
 !README.md
