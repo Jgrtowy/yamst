@@ -4,21 +4,22 @@
 
 YAMST is a collection of tools to help install, manage and host a Minecraft server. It is written in Go and is designed to be cross-platform.
 It's pretty useless right now, but I'm working on it to make it as good as it can be.
+
 ### What can it do right now?
 
-- Install a Minecraft server
-- Apply default configuration
-- Cache server jars
-- Download latest release and snapshot
+-   Install a Minecraft server (Vanilla and Paper currently)
+-   Apply default configuration
+-   Cache server jars
+-   Download latest release and snapshot
 
 ### Planned features
 
-- Install and manage plugins
-- Install and manage worlds
-- Install and manage mods
-- Use different server types (Vanilla, Spigot, Forge, etc.)
-- Simple GUI
-- Use proper Java version
+-   Install and manage plugins
+-   Install and manage worlds
+-   Install and manage mods
+-   Add more server types (Spigot, Forge, Fabric, etc.)
+-   Simple GUI
+-   Use proper Java version
 
 ## How do I use it?
 
