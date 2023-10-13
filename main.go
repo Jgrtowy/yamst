@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/jgrtowy/yamst/lib"
 	"os"
+
+	"github.com/jgrtowy/yamst/lib"
 )
 
 func main() {
@@ -14,18 +15,25 @@ func main() {
 	clearCache := flag.Bool("c", false, "Clear the cache")
 	defaultSettings := flag.Bool("d", false, "Apply default settings")
 	help := flag.Bool("h", false, "Show help")
+	ngrok := flag.Bool("n", false, "Run ngrok tunnel")
 	serverType := flag.String("t", "", "Server type")
+	port := flag.Int("p", 25565, "Port to run ngrok tunnel on")
 	flag.Parse()
 
 	if *serverType == "" {
 		*serverType = "vanilla"
 	}
-
+	if *ngrok {
+		err := lib.RunTunnel(port)
+		if err != nil {
+			fmt.Printf("error running ngrok tunnel: %s", err)
+		}
+	}
 	if *version == "" {
 		var err error
 		*version, err = lib.GetLatest()
 		if err != nil {
-			fmt.Printf("Error getting latest version: %s \n", err)
+			fmt.Printf("error getting latest version: %s", err)
 		}
 	}
 
@@ -41,7 +49,8 @@ func main() {
 		fmt.Println("Clearing cache...")
 		err := os.RemoveAll(lib.GetCacheDirectory())
 		if err != nil {
-			fmt.Errorf("Error clearing cache: %s \n", err)
+			fmt.Printf("error clearing cache: %s", err)
+			return
 		}
 		fmt.Println("Successfully cleared cache")
 	}
@@ -49,7 +58,7 @@ func main() {
 	if *updateManifest {
 		err := lib.UpdateManifest(*serverType, *version)
 		if err != nil {
-			fmt.Errorf("Error updating manifest: %s \n", err)
+			fmt.Printf("error updating manifest: %s", err)
 			return
 		}
 	}
@@ -61,7 +70,8 @@ func main() {
 	if *defaultSettings {
 		err := lib.ApplyDefaultSettings(workingDir)
 		if err != nil {
-			fmt.Printf("Error applying default settings: %s \n", err)
+			fmt.Printf("error applying default settings: %s", err)
+			return
 		}
 	}
 }

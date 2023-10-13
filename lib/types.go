@@ -35,3 +35,7 @@ type PaperBuildInfo struct {
 		} `json:"application"`
 	} `json:"downloads"`
 }
+
+type ForgeBuilds struct {
+	Builds []string `json:"promos"`
+}

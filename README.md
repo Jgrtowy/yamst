@@ -35,11 +35,7 @@ It's pretty useless right now, but I'm working on it to make it as good as it ca
 
 4. Open a command prompt and run `yamst -h` to verify the installation and see the available commands
 
-##### Linux
-
-> Coming soon...
-
-### Building
+### Linux
 
 1. Clone the repository
 
@@ -51,9 +47,24 @@ It's pretty useless right now, but I'm working on it to make it as good as it ca
 
 5. Open a command prompt and run `yamst -h` to verify the installation and see the available commands
 
+### Contributing
+
+1. Fork the repository
+
+2. Make your changes
+
+3. Run `go build` in the root directory
+
+4. Test your changes
+
+5. Create a pull request
+
+6. Wait for me to review it
+
 ### Usage
 
 1. Create a folder for your server
+
 2. Open a command prompt in the folder
 
-3. Run `yamst -i` to install the latest version of
+3. Run `yamst -i` to install the latest version of vanilla server

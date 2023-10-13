@@ -8,26 +8,25 @@ import (
 	"os"
 )
 
-func ExistsCheck(serverType string, version string) error {
+func ExistsCheck(serverType string, version string) (bool, error) {
 	_, err := os.Stat(GetCacheDirectory())
 	if err != nil {
-		return err
+		return false, err
 	}
 	switch serverType {
 	case "paper":
 		_, err := os.Stat(GetCacheDirectory() + fmt.Sprintf("/manifest_%s_%s.json", serverType, version))
 		if err != nil {
-			return err
+
+			return false, err
 		}
-		break
 	case "vanilla":
 		_, err := os.Stat(GetCacheDirectory() + fmt.Sprintf("/manifest_%s.json", serverType))
 		if err != nil {
-			return err
+			return false, err
 		}
-		break
 	}
-	return nil
+	return true, nil
 }
 
 func readFileContents(filePath string) ([]byte, error) {
@@ -50,13 +49,10 @@ func GetManifest(from string, serverType string, version string) ([]byte, error)
 		var response *http.Response
 		var err error
 
-		if err != nil {
-			return nil, err
-		}
 		switch serverType {
 		case "vanilla":
 			response, err = http.Get("https://launchermeta.mojang.com/mc/game/version_manifest.json")
-			break
+
 		case "paper":
 			if version == "" {
 				version, err = GetLatest()
@@ -68,7 +64,9 @@ func GetManifest(from string, serverType string, version string) ([]byte, error)
 			if err != nil {
 				return nil, err
 			}
-			break
+
+		default:
+			return nil, fmt.Errorf("invalid server type: %s", serverType)
 		}
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -83,7 +81,11 @@ func GetManifest(from string, serverType string, version string) ([]byte, error)
 		}
 		return body, nil
 	} else if from == "toolCache" {
-		if err := ExistsCheck(serverType, version); err != nil {
+		exists, err := ExistsCheck(serverType, version)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
 			err = UpdateManifest(serverType, version)
 			if err != nil {
 				return nil, err
@@ -112,30 +114,33 @@ func UpdateManifest(serverType string, version string) error {
 		serverType = "vanilla"
 	}
 	response, err := GetManifest("http", serverType, version)
+	if err != nil {
+		return fmt.Errorf("error getting manifest: %s", err)
+	}
 	var releaseInfo ReleaseInfo
 	err = json.Unmarshal(response, &releaseInfo)
 	if err != nil {
-		return fmt.Errorf("Error decoding JSON: %s \n", err)
+		return fmt.Errorf("error decoding JSON: %s", err)
 	}
 	latest, err := GetLatest()
 	if err != nil {
-		return fmt.Errorf("Error getting latest version: %s \n", err)
+		return fmt.Errorf("error getting latest version: %s", err)
 	}
 	switch serverType {
 	case "paper":
 		err = os.WriteFile(GetCacheDirectory()+fmt.Sprintf("/manifest_%s_%s.json", serverType, version), response, 0644)
 		if err != nil {
-			return fmt.Errorf("Error writing to file: %s \n", err)
+			return fmt.Errorf("error writing to file: %s", err)
 		}
 		fmt.Println("Done! Using release:", version)
-		break
 	case "vanilla":
 		err = os.WriteFile(GetCacheDirectory()+"/manifest_vanilla.json", response, 0644)
 		if err != nil {
-			return fmt.Errorf("Error writing to file: %s \n", err)
+			return fmt.Errorf("error writing to file: %s", err)
 		}
 		fmt.Println("Done! Latest release:", latest)
-		break
+	default:
+		return fmt.Errorf("invalid server type: %s", serverType)
 	}
 
 	return nil
@@ -155,7 +160,11 @@ func GetLatest() (string, error) {
 }
 
 func GetLatestPaperBuild(version string) (int32, error) {
-	if err := ExistsCheck("paper", version); err != nil {
+	exists, err := ExistsCheck("paper", version)
+	if err != nil {
+		return 0, err
+	}
+	if !exists {
 		err = UpdateManifest("paper", version)
 		if err != nil {
 			return 0, err
